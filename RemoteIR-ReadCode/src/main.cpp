@@ -1,36 +1,24 @@
+#include "ConfigWifi.h"
 #include <Arduino.h>
-#include <ArduinoOTA.h>
-#include <ESP8266WiFi.h>
+#include <IRac.h>
 
-void inline configWifi() {
-  Serial.begin(115200);
-  Serial.println("\nESP8285 Start Wifi Connect!");
-  WiFi.mode(WIFI_STA);
-  WiFi.begin();
-  // 检查网络状态，等待连接
-  for (int i = 0; WiFi.status() != WL_CONNECTED && i < 50; i++) {
-    delay(200);
-  }
-  if (WiFi.status() != WL_CONNECTED) {
-    // 开启配网模式
-    WiFi.beginSmartConfig();
-    for (int i = 0;; i++) {
-      // 等待配网成功
-      if (WiFi.smartConfigDone()) {
-        Serial.println();
-        break;
-      }
-      delay(500);
-      // 红绿交替慢闪
-      Serial.print(".");
-    }
-  }
-  delay(1000);
-  WiFi.mode(WIFI_STA);
-  Serial.printf("IP: %s\n", WiFi.localIP().toString().c_str());
-  ArduinoOTA.begin();
+IRrecv irrecv(14, 1024, 50, true);
+decode_results results;
+
+void setup() {
+  configWifi();
+  irrecv.setUnknownThreshold(12);
+  irrecv.setTolerance(25);
+  irrecv.enableIRIn();
 }
 
-void setup() { configWifi(); }
-
-void loop() { ArduinoOTA.handle(); }
+void loop() {
+  ArduinoOTA.handle();
+  if (irrecv.decode(&results)) {
+    Serial.print(resultToHumanReadableBasic(&results));
+    String description = IRAcUtils::resultAcToString(&results);
+    if (description.length()) {
+      Serial.println(D_STR_MESGDESC ": " + description);
+    }
+  }
+}
